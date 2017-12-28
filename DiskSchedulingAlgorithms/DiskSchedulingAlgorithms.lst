@@ -1,0 +1,1049 @@
+Microsoft (R) Macro Assembler Version 6.15.8803		    12/04/16 22:03:49
+Disk-Scheduling Algorithms   (DiskSchedulingAlgorithms.asm)  Page 1 - 1
+
+
+				TITLE Disk-Scheduling Algorithms   (DiskSchedulingAlgorithms.asm)
+
+				COMMENT~
+
+				 Author: Alon Butbul
+				 Program Description: 
+					- The program will demonstrate Disk-Scheduling in three different algorithms.
+						+FCFS
+						+SSTF
+						+SCAN
+					- The user will input the initial position of the disk head and the program will
+				     output the total amount of head movement required by each algorithm.
+				 Creation date: 11/23/2016
+				 Submitted: -----------
+				 All rights reserved (C)
+				~
+
+				INCLUDE Irvine32.INC
+			      C ; Include file for Irvine32.lib             (Irvine32.inc)
+			      C 
+			      C INCLUDE SmallWin.inc		; MS-Windows prototypes, structures, and constants
+			      C .NOLIST
+			      C .LIST
+			      C 
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+				PDWORD TYPEDEF PTR DWORD ;User defined type
+
+ 00000000			.DATA
+
+ 00000000 48 65 6C 6C 6F	MESSAGE     BYTE  "Hello user, this is a demonstration of disk-scheduling algorithms."                   ,0DH,0AH ;End of line characters 
+	   20 75 73 65 72
+	   2C 20 74 68 69
+	   73 20 69 73 20
+	   61 20 64 65 6D
+	   6F 6E 73 74 72
+	   61 74 69 6F 6E
+	   20 6F 66 20 64
+	   69 73 6B 2D 73
+	   63 68 65 64 75
+	   6C 69 6E 67 20
+	   61 6C 67 6F 72
+	   69 74 68 6D 73
+	   2E 0D 0A
+ 00000044  54 68 65 20 70				BYTE  "The program will report the total amount of head movement required by each algorithm.",0DH,0AH ;End of line characters
+	   72 6F 67 72 61
+	   6D 20 77 69 6C
+	   6C 20 72 65 70
+	   6F 72 74 20 74
+	   68 65 20 74 6F
+	   74 61 6C 20 61
+	   6D 6F 75 6E 74
+	   20 6F 66 20 68
+	   65 61 64 20 6D
+	   6F 76 65 6D 65
+	   6E 74 20 72 65
+	   71 75 69 72 65
+	   64 20 62 79 20
+	   65 61 63 68 20
+	   61 6C 67 6F 72
+	   69 74 68 6D 2E
+	   0D 0A
+ 0000009B  50 6C 65 61 73				BYTE  "Please enter the initial position (between 0 to 4999): "                              ,0       ;Null terminating string (the zero)
+	   65 20 65 6E 74
+	   65 72 20 74 68
+	   65 20 69 6E 69
+	   74 69 61 6C 20
+	   70 6F 73 69 74
+	   69 6F 6E 20 28
+	   62 65 74 77 65
+	   65 6E 20 30 20
+	   74 6F 20 34 39
+	   39 39 29 3A 20
+	   00
+ 000000D3 54 6F 74 61 6C	RESULT_F	BYTE  "Total head movment from the FCFS algorithm is: "										 ,0
+	   20 68 65 61 64
+	   20 6D 6F 76 6D
+	   65 6E 74 20 66
+	   72 6F 6D 20 74
+	   68 65 20 46 43
+	   46 53 20 61 6C
+	   67 6F 72 69 74
+	   68 6D 20 69 73
+	   3A 20 00
+ 00000103 54 6F 74 61 6C	RESULT_S	BYTE  "Total head movment from the SCAN algorithm is: "										 ,0
+	   20 68 65 61 64
+	   20 6D 6F 76 6D
+	   65 6E 74 20 66
+	   72 6F 6D 20 74
+	   68 65 20 53 43
+	   41 4E 20 61 6C
+	   67 6F 72 69 74
+	   68 6D 20 69 73
+	   3A 20 00
+ 00000133 54 6F 74 61 6C	RESULT_L	BYTE  "Total head movment from the LOOK algorithm is: "										 ,0
+	   20 68 65 61 64
+	   20 6D 6F 76 6D
+	   65 6E 74 20 66
+	   72 6F 6D 20 74
+	   68 65 20 4C 4F
+	   4F 4B 20 61 6C
+	   67 6F 72 69 74
+	   68 6D 20 69 73
+	   3A 20 00
+ 00000163 57 6F 75 6C 64	DISPLAY_A	BYTE  "Would you like to display the array elements? Press Y/N: "							 ,0
+	   20 79 6F 75 20
+	   6C 69 6B 65 20
+	   74 6F 20 64 69
+	   73 70 6C 61 79
+	   20 74 68 65 20
+	   61 72 72 61 79
+	   20 65 6C 65 6D
+	   65 6E 74 73 3F
+	   20 50 72 65 73
+	   73 20 59 2F 4E
+	   3A 20 00
+ 0000019D 00			ANSWER      BYTE  ? ;Uninitialized byte 
+
+ 0000019E  000003E8 [		ARRAY       DWORD 1000 DUP(0) 		;Array to hold the numbers generated, 1200 bytes all initialized to 0
+	    00000000
+	   ]
+ 0000113E 0000019E R		ARRAY_PTR   PDWORD ARRAY 			;A pointer to the array
+ 00001142 000003E8		ARRAY_LEN	DWORD LENGTHOF ARRAY	;To save the length of the array ;ARRAY_LEN = ($ - ARRAY)/4
+
+ 00001146 00000000		HEADsTART   DWORD ? ;The location of the head given by the user
+ 0000114A 00000000		HEADmOVMENT DWORD 0 ;The result from the start HEADsTART minus the  array 
+
+ 00000000			.CODE 
+
+ 00000000			MAIN PROC
+
+ 00000000  E8 00000000 E		CALL RANDOMIZE   ;Sets seed - Suppose to be called only once at the begging of the program 
+					
+ 00000005  B8 00000000			MOV  EAX, 0      ;In EAX will be the range for the RandomRange 
+ 0000000A  BB 00000000			MOV  EBX, 0    
+ 0000000F  8B 0D 00001142 R		MOV  ECX, ARRAY_LEN ;By default ECX is the counter for the loop
+ 00000015  BA 00000000			MOV  EDX, 0
+ 0000001A  BE 00000000			MOV  ESI, 0
+
+					;Get the random numbers first:  
+ 0000001F  E8 00000025			CALL FILL_ARRAY
+					;User input for the head start:
+ 00000024  E8 0000006D			CALL WELCOME
+					;Displaying elements:
+ 00000029  E8 0000003A			CALL DIAPLAY_ELEMENTS
+					;Calculate the head movements: 
+ 0000002E  E8 0000007C			CALL FCFS 
+ 00000033  E8 0000039D			CALL BUBBLESORT
+ 00000038  E8 000000D4			CALL SCAN
+ 0000003D  E8 00000242			CALL LOOK
+					
+				EXIT 
+ 00000049			MAIN ENDP
+
+				;---------------------------------------------------
+ 00000049			FILL_ARRAY PROC
+				;	
+				;  
+				; Receives: None
+				; Returns: None
+				;---------------------------------------------------
+ 00000049  55				PUSH EBP
+ 0000004A  8B EC			MOV EBP, ESP
+					
+ 0000004C			FILL:
+					
+ 0000004C  B8 00001387			MOV  EAX, 4999   ;In EAX will be the range for the RandomRange
+ 00000051  E8 00000000 E		CALL RANDOMRANGE ;What will actually generate the number inside the range specified in EAX
+					
+ 00000056  89 86 0000019E R		MOV  ARRAY[ESI], EAX ; Copy the value generated in EAX into the array
+ 0000005C  83 C6 04			ADD   ESI, TYPE DWORD ; Add 4 for the next element in the array
+
+ 0000005F  E2 EB			LOOP FILL
+					
+ 00000061  E8 00000000 E		CALL CRLF
+ 00000066  5D				POP EBP
+ 00000067  C3				RET
+ 00000068			FILL_ARRAY ENDP
+
+				;---------------------------------------------------
+ 00000068			DIAPLAY_ELEMENTS PROC
+				;	
+				; Displaying the elements according to the user choose 
+				; Receives: None 
+				; Returns: None 
+				;---------------------------------------------------
+ 00000068  55				PUSH EBP
+ 00000069  8B EC			MOV  EBP, ESP
+					
+ 0000006B  E8 00000000 E		CALL CRLF
+ 00000070  BA 00000163 R		MOV EDX, OFFSET DISPLAY_A
+ 00000075  E8 00000000 E		CALL WRITESTRING
+					
+ 0000007A  E8 00000000 E		CALL READCHAR
+ 0000007F  3C 59			CMP AL, 59h ;Y
+ 00000081  74 0C			JE DISPLAY 
+ 00000083  3C 79			CMP AL, 79h ;y
+ 00000085  74 08			JE DISPLAY
+ 00000087  3C 4E			CMP AL, 4Eh ;N
+ 00000089  74 09			JE EXITP
+ 0000008B  3C 6E			CMP AL, 6Eh ;n
+ 0000008D  74 05			JE EXITP
+					
+ 0000008F			DISPLAY:	
+ 0000008F  E8 0000036A			CALL PRINT
+
+ 00000094			EXITP:	
+ 00000094  5D				POP EBP
+ 00000095  C3				RET
+ 00000096			DIAPLAY_ELEMENTS ENDP 
+
+				;---------------------------------------------------
+ 00000096			WELCOME PROC 
+				;	
+				; Shows the welcome screen
+				; Receives: None 
+				; Returns: None
+				;---------------------------------------------------
+ 00000096  55				PUSH EBP
+ 00000097  8B EC			MOV	 EBP, ESP
+					
+ 00000099  BA 00000000 R		MOV  EDX, OFFSET MESSAGE  
+ 0000009E  E8 00000000 E		CALL WRITESTRING ;Displaying the message
+					
+ 000000A3  E8 00000000 E	    CALL READINT        ;Excepting user input into EAX
+ 000000A8  A3 00001146 R		MOV  HEADsTART, EAX ;Save the value from EAX to a variable
+
+ 000000AD  5D				POP EBP
+ 000000AE  C3				RET 
+					
+ 000000AF			WELCOME ENDP 
+
+				;---------------------------------------------------
+ 000000AF			FCFS PROC
+				;	
+				; Calculating the head movement using the FCFS algorithm,
+				; FCFS - First Come First Serve . 
+				; Receives: none 
+				; Returns: EAX = sum of head movements
+				;---------------------------------------------------
+ 000000AF  55				PUSH EBP
+ 000000B0  8B EC			MOV	 EBP, ESP
+					
+ 000000B2  8B 0D 00001142 R		MOV  ECX, ARRAY_LEN ;Counter for the loop	
+ 000000B8  83 E9 01			SUB  ECX, 1			;Subtract one not to exceed the array size
+ 000000BB  BE 00000000			MOV  ESI, 0         ;The index for the array
+					
+ 000000C0  8B 1D 00001146 R		MOV  EBX, HEADsTART ;EBX has the user input for head start
+
+ 000000C6  2B 9E 0000019E R		SUB EBX, ARRAY[ESI] ;ARRAY[0] 
+ 000000CC  79 02			JNS CONTINUE	    ;An instruction to check if sign-flag turned on (jump if not signed)
+					
+ 000000CE  F7 DB			NEG EBX			    ;The instruction to apply depending on the case 
+					
+ 000000D0			CONTINUE:
+					
+ 000000D0  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+ 000000D6			CALClOOP:
+					
+ 000000D6  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 000000DC  2B 9E 000001A2 R		SUB EBX, ARRAY[ESI+4]
+					
+ 000000E2  79 02			JNS INNER ;An instruction to check if sign-flag turned on (jump if not signed)
+
+ 000000E4  F7 DB			NEG EBX	  ;The instruction to apply depending on the case 
+
+ 000000E6			INNER:	
+					
+ 000000E6  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 000000EC  83 C6 04			ADD ESI, TYPE DWORD
+
+ 000000EF  E2 E5			LOOP CALClOOP 
+
+					;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 000000F1  E8 00000000 E		CALL CRLF
+
+ 000000F6  BA 000000D3 R		MOV  EDX, OFFSET RESULT_F
+ 000000FB  E8 00000000 E		CALL WRITESTRING ;Displaying the message
+
+ 00000100  A1 0000114A R		MOV EAX, HEADmOVMENT
+ 00000105  E8 00000000 E		CALL WRITEDEC
+					
+ 0000010A  E8 00000000 E		CALL CRLF
+					;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+					
+ 0000010F  5D				POP EBP
+ 00000110  C3				RET ;Return control to the calling proc
+					
+ 00000111			FCFS ENDP
+
+				;---------------------------------------------------
+ 00000111			SCAN PROC
+				;	
+				; Calculating the head movement using the SCAN algorithm 
+				; Receives: Array of element 
+				; Returns: EAX = sum of head movements
+				;---------------------------------------------------
+ 00000111  55				PUSH EBP
+ 00000112  8B EC			MOV	 EBP, ESP
+					
+ 00000114  C7 05 0000114A R		MOV HEADmOVMENT, 0 ;To save a new value from that proc
+	   00000000
+ 0000011E  8B 0D 00001142 R		MOV ECX, ARRAY_LEN
+ 00000124  83 E9 01			SUB ECX, 1
+					
+ 00000127  BE 00000000			MOV ESI, 0
+					
+					COMMENT~
+					There are 3 situaions to tack care of
+					The first if the head start is 0 or the first element in the array.
+					The second if the head start is between 0 and 4999, what will make the program
+					go to both ends.
+					The third is if head start is 4999 or the last element in the array.~
+					
+					;START
+ 0000012C  83 3D 00001146 R		CMP HEADsTART, 0
+	   00
+ 00000133  74 37			JE ZERO
+ 00000135  8B 1D 0000019E R		MOV EBX, ARRAY[0]
+ 0000013B  39 1D 00001146 R		CMP HEADsTART, EBX
+ 00000141  74 3D			JE L_ZERO 
+					
+					;END
+ 00000143  BE 00000F9C			MOV ESI, 999 * TYPE ARRAY 
+ 00000148  81 3D 00001146 R		CMP HEADsTART, 4999 
+	   00001387
+ 00000152  0F 84 000000E3		JE BACK
+ 00000158  8B 9E 0000019E R		MOV EBX, ARRAY[ESI] 
+ 0000015E  39 1D 00001146 R		CMP HEADsTART, EBX
+ 00000164  0F 84 000000E3		JE BACK_L
+					
+					;MIDDLE
+ 0000016A  EB 43			JMP MIDDLE ;If it will get to here it's defiantly in between 
+					
+ 0000016C			ZERO:
+
+ 0000016C  8B 1D 00001146 R		MOV EBX, HEADsTART ;EBX has the user input for head start
+ 00000172  2B 9E 0000019E R		SUB EBX, ARRAY[ESI];ARRAY[0] 
+ 00000178  F7 DB			NEG EBX			   ;The instruction to apply depending on the case 
+					
+ 0000017A  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+ 00000180			L_ZERO:	
+
+ 00000180  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 00000186  2B 9E 000001A2 R		SUB EBX, ARRAY[ESI+4]
+
+ 0000018C  F7 DB			NEG EBX	  ;The instruction to apply depending on the case 
+					
+ 0000018E  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 00000194  83 C6 04			ADD ESI, TYPE DWORD
+
+ 00000197  E2 E7			LOOP L_ZERO 
+					
+					;Adding the last value which is the end of the line sequence:
+ 00000199  BB 00001387			MOV EBX, 4999		
+ 0000019E  2B 9E 0000019E R		SUB EBX, ARRAY[ESI]
+ 000001A4  01 1D 0000114A R		ADD HEADmOVMENT, EBX
+					
+ 000001AA  E9 000000B5			JMP EXIT_SCAN
+
+ 000001AF			MIDDLE:
+
+ 000001AF  E8 0000027A			CALL SEARCH ;To find the next request 
+					
+					;Case 1:
+ 000001B4  83 F9 00			CMP ECX, 0
+ 000001B7  74 0A			JE NOT_FOUND_TOP
+					
+					;Case 2:
+ 000001B9  3B 0D 00001142 R		CMP ECX, ARRAY_LEN
+ 000001BF  74 0D			JE NOT_FOUND_BOTTOM
+					
+					;Case 3:
+ 000001C1  EB 10			JMP MIDDLE_UP
+
+ 000001C3			NOT_FOUND_TOP:
+					
+					COMMENT~
+					If ECX is 0 that means that search proc tried to find in the list the key the user entered and it
+					did not find it, BUT the key is greater than the list and smaller than the last element which is 
+					4999.~
+					
+					;Calculating backward using the "back" section in the proc  
+ 000001C3  8B 0D 00001142 R		MOV ECX, ARRAY_LEN ;ECX is 0 therefore need to assign back the (length - 1)
+ 000001C9  83 E9 01			SUB ECX, 1
+					
+ 000001CC  EB 6D			JMP BACK
+
+ 000001CE			NOT_FOUND_BOTTOM:
+					
+ 000001CE  83 E9 01			SUB ECX, 1
+ 000001D1  EB 99			JMP ZERO 
+					
+ 000001D3			MIDDLE_UP:;----------------------------------------------------------------
+					
+					COMMENT~
+					At this point, if the assambler got to here ECX is not 0 and ESI pointing to the next element.
+					Now, calculate the #'s going up and than down to the last element.~
+					
+ 000001D3  56				PUSH ESI ;To use the last position of ESI
+ 000001D4  51				PUSH ECX ;To save the count for the calculation
+ 000001D5  83 E9 01			SUB ECX, 1
+					
+ 000001D8  8B 1D 00001146 R		MOV EBX, HEADsTART  ;EBX has the user input for head start
+ 000001DE  2B 9E 0000019E R		SUB EBX, ARRAY[ESI] ;ARRAY[search] 
+ 000001E4  F7 DB			NEG EBX			    ;The instruction to apply depending on the case 
+					
+ 000001E6  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+
+ 000001EC			MIDDLE_UP_L:	
+
+ 000001EC  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 000001F2  2B 9E 000001A2 R		SUB EBX, ARRAY[ESI+4]
+					
+ 000001F8  F7 DB			NEG EBX	  ;The instruction to apply depending on the case 
+					
+ 000001FA  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 00000200  83 C6 04			ADD ESI, TYPE DWORD
+
+ 00000203  E2 E7			LOOP MIDDLE_UP_L 
+					
+					;Adding the last value which is the end of the line sequence:
+ 00000205  BB 00001387			MOV EBX, 4999
+ 0000020A  2B 9E 0000019E R		SUB EBX, ARRAY[ESI]
+ 00000210  01 1D 0000114A R		ADD HEADmOVMENT, EBX
+					
+ 00000216			MIDDLE_DOWN:;----------------------------------------------------------------
+
+					;Restoring the values:
+ 00000216  59				POP ECX
+ 00000217  5E				POP ESI 
+
+ 00000218  8B 15 00001142 R		MOV EDX, ARRAY_LEN
+ 0000021E  2B D1			SUB EDX, ECX
+ 00000220  8B CA			MOV ECX, EDX 
+ 00000222  83 E9 01			SUB ECX, 1
+					
+ 00000225  83 EE 04			SUB ESI, TYPE DWORD
+					
+					;Going backward with the count:
+ 00000228  BB 00001387			MOV EBX, 4999 ;4999
+ 0000022D  2B 9E 0000019E R		SUB EBX, ARRAY[ESI]
+					
+ 00000233  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+					
+ 00000239			MIDDLE_DOWN_L:
+					
+ 00000239  EB 12			JMP BACK_L
+
+ 0000023B			BACK:;----------------------------------------------------------------
+
+ 0000023B  8B 1D 00001146 R		MOV EBX, HEADsTART ;EBX has the user input for head start
+ 00000241  2B 9E 0000019E R		SUB EBX, ARRAY[ESI];ARRAY[last element] 
+					
+ 00000247  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+ 0000024D			BACK_L:	
+
+ 0000024D  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 00000253  2B 9E 0000019A R		SUB EBX, ARRAY[ESI - 4]
+					
+ 00000259  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 0000025F  83 EE 04			SUB ESI, TYPE DWORD
+
+ 00000262  E2 E9			LOOP BACK_L
+					
+ 00000264			EXIT_SCAN:
+					
+					;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 00000264  E8 00000000 E		CALL CRLF
+
+ 00000269  BA 00000103 R		MOV  EDX, OFFSET RESULT_S
+ 0000026E  E8 00000000 E		CALL WRITESTRING ;Displaying the message
+
+ 00000273  A1 0000114A R		MOV EAX, HEADmOVMENT
+ 00000278  E8 00000000 E		CALL WRITEDEC
+					
+ 0000027D  E8 00000000 E		CALL CRLF
+					;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+					
+ 00000282  5D				POP EBP
+ 00000283  C3				RET ;Return control to the calling proc 
+ 00000284			SCAN ENDP
+
+				;---------------------------------------------------
+ 00000284			LOOK PROC
+				;	
+				; Calculating the head movement using the LOOK algorithm 
+				; Receives: none 
+				; Returns: EAX = sum of head movements
+				;---------------------------------------------------
+ 00000284  55				PUSH EBP
+ 00000285  8B EC			MOV	 EBP, ESP
+					
+ 00000287  C7 05 0000114A R		MOV HEADmOVMENT, 0 ;To save a new value from that proc
+	   00000000
+ 00000291  8B 0D 00001142 R		MOV ECX, ARRAY_LEN
+ 00000297  83 E9 01			SUB ECX, 1
+					
+ 0000029A  BE 00000000			MOV ESI, 0
+					
+					COMMENT~
+					There are 3 situations to tack care of
+					The first if the head start is 0 or the first element in the array.
+					The second if the head start is between 0 and 4999, what will make the program
+					go to both ends.
+					The third is if head start is 4999 or the last element in the array.~
+					
+					;START
+ 0000029F  83 3D 00001146 R		CMP HEADsTART, 0
+	   00
+ 000002A6  74 37			JE ZERO
+ 000002A8  8B 1D 0000019E R		MOV EBX, ARRAY[0]
+ 000002AE  39 1D 00001146 R		CMP HEADsTART, EBX
+ 000002B4  74 3D			JE L_ZERO 
+					
+					;END
+ 000002B6  BE 00000F9C			MOV ESI, 999 * TYPE ARRAY 
+ 000002BB  81 3D 00001146 R		CMP HEADsTART, 4999 
+	   00001387
+ 000002C5  0F 84 000000C1		JE BACK
+ 000002CB  8B 9E 0000019E R		MOV EBX, ARRAY[ESI] 
+ 000002D1  39 1D 00001146 R		CMP HEADsTART, EBX
+ 000002D7  0F 84 000000C1		JE BACK_L
+					
+					;MIDDLE
+ 000002DD  EB 32			JMP MIDDLE ;If it will get to here it's defiantly in between 
+					
+ 000002DF			ZERO:
+
+ 000002DF  8B 1D 00001146 R		MOV EBX, HEADsTART ;EBX has the user input for head start
+ 000002E5  2B 9E 0000019E R		SUB EBX, ARRAY[ESI];ARRAY[0] 
+ 000002EB  F7 DB			NEG EBX			   ;The instruction to apply depending on the case 
+					
+ 000002ED  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+ 000002F3			L_ZERO:	
+
+ 000002F3  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 000002F9  2B 9E 000001A2 R		SUB EBX, ARRAY[ESI+4]
+
+ 000002FF  F7 DB			NEG EBX	  ;The instruction to apply depending on the case 
+					
+ 00000301  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 00000307  83 C6 04			ADD ESI, TYPE DWORD
+
+ 0000030A  E2 E7			LOOP L_ZERO 
+					
+ 0000030C  E9 000000A4			JMP EXIT_SCAN
+
+ 00000311			MIDDLE:
+
+ 00000311  E8 00000118			CALL SEARCH ;To find the next request 
+					
+					;Case 1:
+ 00000316  83 F9 00			CMP ECX, 0
+ 00000319  74 0A			JE NOT_FOUND_TOP
+					
+					;Case 2:
+ 0000031B  3B 0D 00001142 R		CMP ECX, ARRAY_LEN
+ 00000321  74 0D			JE NOT_FOUND_BOTTOM
+					
+					;Case 3:
+ 00000323  EB 10			JMP MIDDLE_UP
+
+ 00000325			NOT_FOUND_TOP:
+					
+					COMMENT~
+					If ECX is 0 that means that search proc tried to find in the list the key the user entered and it
+					did not find it, BUT the key is greater than the list and smaller than the last element which is 
+					4999.~
+					
+					;Calculating backward using the "back" section in the proc  
+ 00000325  8B 0D 00001142 R		MOV ECX, ARRAY_LEN ;ECX is 0 therefore need to assign back the (length - 1)
+ 0000032B  83 E9 01			SUB ECX, 1
+					
+ 0000032E  EB 5C			JMP BACK
+
+ 00000330			NOT_FOUND_BOTTOM:
+					
+ 00000330  83 E9 01			SUB ECX, 1
+ 00000333  EB AA			JMP ZERO 
+					
+ 00000335			MIDDLE_UP:;----------------------------------------------------------------
+					
+					COMMENT~
+					At this point, if the assambler got to here ECX is not 0 and ESI pointing to the next element.
+					Now, calculate the #'s going up and than down to the last element.~
+					
+ 00000335  56				PUSH ESI ;To use the last position of ESI
+ 00000336  51				PUSH ECX ;To save the count for the calculation
+ 00000337  83 E9 01			SUB ECX, 1
+					
+ 0000033A  8B 1D 00001146 R		MOV EBX, HEADsTART  ;EBX has the user input for head start
+ 00000340  2B 9E 0000019E R		SUB EBX, ARRAY[ESI] ;ARRAY[search] 
+ 00000346  F7 DB			NEG EBX			    ;The instruction to apply depending on the case 
+					
+ 00000348  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+
+ 0000034E			MIDDLE_UP_L:	
+
+ 0000034E  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 00000354  2B 9E 000001A2 R		SUB EBX, ARRAY[ESI+4]
+					
+ 0000035A  F7 DB			NEG EBX	  ;The instruction to apply depending on the case 
+					
+ 0000035C  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 00000362  83 C6 04			ADD ESI, TYPE DWORD
+
+ 00000365  E2 E7			LOOP MIDDLE_UP_L 
+					
+ 00000367			MIDDLE_DOWN:;----------------------------------------------------------------
+
+					;Restoring the values:
+ 00000367  59				POP ECX
+ 00000368  5E				POP ESI 
+
+ 00000369  8B 15 00001142 R		MOV EDX, ARRAY_LEN
+ 0000036F  2B D1			SUB EDX, ECX
+ 00000371  8B CA			MOV ECX, EDX 
+ 00000373  83 E9 01			SUB ECX, 1
+					
+ 00000376  83 EE 04			SUB ESI, TYPE DWORD
+					
+					;Going backward with the count:
+ 00000379  BB 00001387			MOV EBX, 4999 
+ 0000037E  2B 9E 0000019E R		SUB EBX, ARRAY[ESI]
+					
+ 00000384  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+					
+ 0000038A			MIDDLE_DOWN_L:
+					
+ 0000038A  EB 12			JMP BACK_L
+
+ 0000038C			BACK:;----------------------------------------------------------------
+
+ 0000038C  8B 1D 00001146 R		MOV EBX, HEADsTART ;EBX has the user input for head start
+ 00000392  2B 9E 0000019E R		SUB EBX, ARRAY[ESI];ARRAY[last element] 
+					
+ 00000398  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+
+ 0000039E			BACK_L:	
+
+ 0000039E  8B 9E 0000019E R		MOV EBX, ARRAY[ESI]
+ 000003A4  2B 9E 0000019A R		SUB EBX, ARRAY[ESI - 4]
+					
+ 000003AA  01 1D 0000114A R		ADD HEADmOVMENT, EBX ;The result is the head movement
+ 000003B0  83 EE 04			SUB ESI, TYPE DWORD
+
+ 000003B3  E2 E9			LOOP BACK_L
+					
+ 000003B5			EXIT_SCAN:
+
+					;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 000003B5  E8 00000000 E		CALL CRLF
+
+ 000003BA  BA 00000133 R		MOV  EDX, OFFSET RESULT_L
+ 000003BF  E8 00000000 E		CALL WRITESTRING ;Displaying the message
+
+ 000003C4  A1 0000114A R		MOV EAX, HEADmOVMENT
+ 000003C9  E8 00000000 E		CALL WRITEDEC
+					
+ 000003CE  E8 00000000 E		CALL CRLF
+					;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+					
+ 000003D3  5D				POP EBP
+ 000003D4  C3				RET ;Return control to the calling proc
+ 000003D5			LOOK ENDP
+
+				;-------------------------------------------------------
+ 000003D5			BUBBLESORT PROC USES EAX ECX ESI,
+
+				; Sort an array of 32-bit signed integers in ascending
+				; order, using the bubble sort algorithm.
+				; Receives: pointer to array, array size
+				; Returns: nothing
+				;-------------------------------------------------------
+
+					;pArray: PTR DWORD, ; pointer to array
+					;Count :     DWORD  ; array size
+
+					;mov ecx,Count
+ 000003D8  8B 0D 00001142 R		MOV  ECX, ARRAY_LEN
+ 000003DE  49				DEC  ECX 		    ; decrement count by 1
+
+ 000003DF  51			L1: PUSH ECX		    ; save outer loop count
+ 000003E0  8B 35 0000113E R		MOV  ESI, ARRAY_PTR ; point to first value
+
+ 000003E6  8B 06		L2: MOV  EAX,     [ESI] ; get array value
+ 000003E8  39 46 04			CMP  [ESI+4], EAX   ; compare a pair of values
+ 000003EB  7F 05			JG L3 			    ; if [ESI] <= [ESI+4], no exchange
+ 000003ED  87 46 04			XCHG EAX,   [ESI+4] ; exchange the pair
+ 000003F0  89 06			MOV  [ESI], EAX
+
+ 000003F2  83 C6 04		L3: ADD  ESI, 4 		; move both pointers forward
+ 000003F5  E2 EF			LOOP L2 		    ; inner loop
+ 000003F7  59				POP  ECX 		    ; retrieve outer loop count
+ 000003F8  E2 E5			LOOP L1 		    ; else repeat outer loop
+
+ 000003FA			L4: RET
+
+ 000003FE			BUBBLESORT ENDP
+
+				;----------------------------------------------------
+ 000003FE			PRINT PROC USES EAX ECX ESI
+				; Prints all the elements inside the array
+				; Receives: None
+				; Returns: None 
+				;---------------------------------------------------
+ 00000401  55				PUSH EBP
+ 00000402  8B EC			MOV EBP, ESP 
+					
+ 00000404  8B 0D 00001142 R		MOV ECX, ARRAY_LEN
+ 0000040A  BE 00000000			MOV ESI, 0
+					
+ 0000040F			ARR_PRINT: ; Array print 
+ 0000040F  8B 86 0000019E R		MOV EAX, ARRAY[ESI]
+ 00000415  E8 00000000 E		CALL WRITEDEC
+ 0000041A  E8 00000000 E		CALL CRLF
+					
+ 0000041F  83 C6 04			ADD ESI, TYPE DWORD 
+ 00000422  E2 EB			LOOP ARR_PRINT
+					
+ 00000424  E8 00000000 E		CALL CRLF
+					
+ 00000429  5D				POP EBP
+					RET
+ 0000042E			PRINT ENDP
+
+				;-----------------------------------------------------
+ 0000042E			SEARCH PROC
+				; Searching for the position where the next request 
+				; suppose to be executed 
+				;  
+				; Receives: Array
+				; Returns: ESI pointing to the next request
+				;		   ECX shows counting number 
+				;-----------------------------------------------------	
+ 0000042E  55				PUSH EBP
+ 0000042F  8B EC			MOV	 EBP, ESP
+
+ 00000431  8B 1D 00001146 R		MOV EBX, HEADsTART
+ 00000437  8B 0D 00001142 R		MOV ECX, ARRAY_LEN
+ 0000043D  BE 00000000			MOV ESI, 0
+					
+ 00000442			SEARCH_L:
+
+ 00000442  39 9E 0000019E R		CMP ARRAY[ESI], EBX
+ 00000448  73 08			JAE  FINISH 		;Jump if above or equal
+					
+ 0000044A  83 C6 04			ADD ESI, TYPE DWORD ;Adding 4 for the next element
+
+ 0000044D  E2 F3			LOOP SEARCH_L
+					
+ 0000044F  83 EE 04			SUB ESI, 4 			;Keep ESI pointing to the last element
+					
+ 00000452			FINISH: 				;ESI has the right element to point to 
+
+ 00000452  5D				POP EBP
+ 00000453  C3				RET 				;Return control to the calling proc 
+ 00000454			SEARCH ENDP 
+
+					END MAIN
+Microsoft (R) Macro Assembler Version 6.15.8803		    12/04/16 22:03:49
+Disk-Scheduling Algorithms   (DiskSchedulingAlgorithms.asm)  Symbols 2 - 1
+
+
+
+
+Structures and Unions:
+
+                N a m e                  Size
+                                         Offset      Type
+
+CONSOLE_CURSOR_INFO  . . . . . .	 00000005
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  bVisible . . . . . . . . . . .	 00000004	 Byte
+CONSOLE_SCREEN_BUFFER_INFO . . .	 00000016
+  dwSize . . . . . . . . . . . .	 00000000	 DWord
+  dwCursorPos  . . . . . . . . .	 00000004	 DWord
+  wAttributes  . . . . . . . . .	 00000008	 Word
+  srWindow . . . . . . . . . . .	 0000000A	 QWord
+  maxWinSize . . . . . . . . . .	 00000012	 DWord
+COORD  . . . . . . . . . . . . .	 00000004
+  X  . . . . . . . . . . . . . .	 00000000	 Word
+  Y  . . . . . . . . . . . . . .	 00000002	 Word
+FILETIME . . . . . . . . . . . .	 00000008
+  loDateTime . . . . . . . . . .	 00000000	 DWord
+  hiDateTime . . . . . . . . . .	 00000004	 DWord
+SMALL_RECT . . . . . . . . . . .	 00000008
+  Left . . . . . . . . . . . . .	 00000000	 Word
+  Top  . . . . . . . . . . . . .	 00000002	 Word
+  Right  . . . . . . . . . . . .	 00000004	 Word
+  Bottom . . . . . . . . . . . .	 00000006	 Word
+SYSTEMTIME . . . . . . . . . . .	 00000010
+  wYear  . . . . . . . . . . . .	 00000000	 Word
+  wMonth . . . . . . . . . . . .	 00000002	 Word
+  wDayOfWeek . . . . . . . . . .	 00000004	 Word
+  wDay . . . . . . . . . . . . .	 00000006	 Word
+  wHour  . . . . . . . . . . . .	 00000008	 Word
+  wMinute  . . . . . . . . . . .	 0000000A	 Word
+  wSecond  . . . . . . . . . . .	 0000000C	 Word
+  wMilliseconds  . . . . . . . .	 0000000E	 Word
+
+
+Types:
+
+                N a m e                  Size     Attr
+
+PDWORD . . . . . . . . . . . . .	 00000004     FarPTR DWord 
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 DWord	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 0000114E DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000454 DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+BUBBLESORT . . . . . . . . . . .	P Near	 000003D5 _TEXT	Length= 00000029 Public STDCALL
+  L1 . . . . . . . . . . . . . .	L Near	 000003DF _TEXT	
+  L2 . . . . . . . . . . . . . .	L Near	 000003E6 _TEXT	
+  L3 . . . . . . . . . . . . . .	L Near	 000003F2 _TEXT	
+  L4 . . . . . . . . . . . . . .	L Near	 000003FA _TEXT	
+CloseHandle  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ClrScr . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+CreateFileA  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Crlf . . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DIAPLAY_ELEMENTS . . . . . . . .	P Near	 00000068 _TEXT	Length= 0000002E Public STDCALL
+  DISPLAY  . . . . . . . . . . .	L Near	 0000008F _TEXT	
+  EXITP  . . . . . . . . . . . .	L Near	 00000094 _TEXT	
+Delay  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpMem  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+DumpRegs . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+FCFS . . . . . . . . . . . . . .	P Near	 000000AF _TEXT	Length= 00000062 Public STDCALL
+  CONTINUE . . . . . . . . . . .	L Near	 000000D0 _TEXT	
+  CALClOOP . . . . . . . . . . .	L Near	 000000D6 _TEXT	
+  INNER  . . . . . . . . . . . .	L Near	 000000E6 _TEXT	
+FILL_ARRAY . . . . . . . . . . .	P Near	 00000049 _TEXT	Length= 0000001F Public STDCALL
+  FILL . . . . . . . . . . . . .	L Near	 0000004C _TEXT	
+FlushConsoleInputBuffer  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetCommandTail . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCP . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetConsoleScreenBufferInfo . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetDateTime  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetLocalTime . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetMseconds  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetNumberOfConsoleInputEvents  .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetStdHandle . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetSystemTime  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+GetTickCount . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Gotoxy . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+IsDigit  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+LOOK . . . . . . . . . . . . . .	P Near	 00000284 _TEXT	Length= 00000151 Public STDCALL
+  ZERO . . . . . . . . . . . . .	L Near	 000002DF _TEXT	
+  L_ZERO . . . . . . . . . . . .	L Near	 000002F3 _TEXT	
+  MIDDLE . . . . . . . . . . . .	L Near	 00000311 _TEXT	
+  NOT_FOUND_TOP  . . . . . . . .	L Near	 00000325 _TEXT	
+  NOT_FOUND_BOTTOM . . . . . . .	L Near	 00000330 _TEXT	
+  MIDDLE_UP  . . . . . . . . . .	L Near	 00000335 _TEXT	
+  MIDDLE_UP_L  . . . . . . . . .	L Near	 0000034E _TEXT	
+  MIDDLE_DOWN  . . . . . . . . .	L Near	 00000367 _TEXT	
+  MIDDLE_DOWN_L  . . . . . . . .	L Near	 0000038A _TEXT	
+  BACK . . . . . . . . . . . . .	L Near	 0000038C _TEXT	
+  BACK_L . . . . . . . . . . . .	L Near	 0000039E _TEXT	
+  EXIT_SCAN  . . . . . . . . . .	L Near	 000003B5 _TEXT	
+MAIN . . . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000049 Public STDCALL
+PRINT  . . . . . . . . . . . . .	P Near	 000003FE _TEXT	Length= 00000030 Public STDCALL
+  ARR_PRINT  . . . . . . . . . .	L Near	 0000040F _TEXT	
+PeekConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Random32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+RandomRange  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Randomize  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadChar . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleA . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadConsoleInputA  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadFile . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadHex  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadInt  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+ReadString . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SCAN . . . . . . . . . . . . . .	P Near	 00000111 _TEXT	Length= 00000173 Public STDCALL
+  ZERO . . . . . . . . . . . . .	L Near	 0000016C _TEXT	
+  L_ZERO . . . . . . . . . . . .	L Near	 00000180 _TEXT	
+  MIDDLE . . . . . . . . . . . .	L Near	 000001AF _TEXT	
+  NOT_FOUND_TOP  . . . . . . . .	L Near	 000001C3 _TEXT	
+  NOT_FOUND_BOTTOM . . . . . . .	L Near	 000001CE _TEXT	
+  MIDDLE_UP  . . . . . . . . . .	L Near	 000001D3 _TEXT	
+  MIDDLE_UP_L  . . . . . . . . .	L Near	 000001EC _TEXT	
+  MIDDLE_DOWN  . . . . . . . . .	L Near	 00000216 _TEXT	
+  MIDDLE_DOWN_L  . . . . . . . .	L Near	 00000239 _TEXT	
+  BACK . . . . . . . . . . . . .	L Near	 0000023B _TEXT	
+  BACK_L . . . . . . . . . . . .	L Near	 0000024D _TEXT	
+  EXIT_SCAN  . . . . . . . . . .	L Near	 00000264 _TEXT	
+SEARCH . . . . . . . . . . . . .	P Near	 0000042E _TEXT	Length= 00000026 Public STDCALL
+  SEARCH_L . . . . . . . . . . .	L Near	 00000442 _TEXT	
+  FINISH . . . . . . . . . . . .	L Near	 00000452 _TEXT	
+SetConsoleCursorInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleCursorPosition . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleMode . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleScreenBufferSize . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTextAttribute  . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleTitleA . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetConsoleWindowInfo . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetFilePointer . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SetTextColor . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Sleep  . . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_compare  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_copy . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_length . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_trim . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+Str_ucase  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+SystemTimeToFileTime . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WELCOME  . . . . . . . . . . . .	P Near	 00000096 _TEXT	Length= 00000019 Public STDCALL
+WaitMsg  . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteBin . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteChar  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleA  . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputAttribute  . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteConsoleOutputCharacterA . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteDec . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteFile  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteHex . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteInt . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+WriteString  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000003h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+ANSWER . . . . . . . . . . . . .	Byte	 0000019D _DATA	
+ARRAY_LEN  . . . . . . . . . . .	DWord	 00001142 _DATA	
+ARRAY_PTR  . . . . . . . . . . .	DWord	 0000113E _DATA	
+ARRAY  . . . . . . . . . . . . .	DWord	 0000019E _DATA	
+CREATE_ALWAYS  . . . . . . . . .	Number	 00000002h   
+CREATE_NEW . . . . . . . . . . .	Number	 00000001h   
+CreateFile . . . . . . . . . . .	Text   	 CreateFileA
+DISPLAY_A  . . . . . . . . . . .	Byte	 00000163 _DATA	
+DO_NOT_SHARE . . . . . . . . . .	Number	 00000000h   
+ENABLE_ECHO_INPUT  . . . . . . .	Number	 00000004h   
+ENABLE_LINE_INPUT  . . . . . . .	Number	 00000002h   
+ENABLE_MOUSE_INPUT . . . . . . .	Number	 00000010h   
+ENABLE_PROCESSED_INPUT . . . . .	Number	 00000001h   
+ENABLE_PROCESSED_OUTPUT  . . . .	Number	 00000001h   
+ENABLE_WINDOW_INPUT  . . . . . .	Number	 00000008h   
+ENABLE_WRAP_AT_EOL_OUTPUT  . . .	Number	 00000002h   
+FALSE  . . . . . . . . . . . . .	Number	 00000000h   
+FILE_APPEND_DATA . . . . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_ARCHIVE . . . . .	Number	 00000020h   
+FILE_ATTRIBUTE_COMPRESSED  . . .	Number	 00000800h   
+FILE_ATTRIBUTE_DEVICE  . . . . .	Number	 00000040h   
+FILE_ATTRIBUTE_DIRECTORY . . . .	Number	 00000010h   
+FILE_ATTRIBUTE_ENCRYPTED . . . .	Number	 00004000h   
+FILE_ATTRIBUTE_HIDDEN  . . . . .	Number	 00000002h   
+FILE_ATTRIBUTE_NORMAL  . . . . .	Number	 00000080h   
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED .	Number	 00002000h   
+FILE_ATTRIBUTE_OFFLINE . . . . .	Number	 00001000h   
+FILE_ATTRIBUTE_READONLY  . . . .	Number	 00000001h   
+FILE_ATTRIBUTE_REPARSE_POINT . .	Number	 00000400h   
+FILE_ATTRIBUTE_SPARSE_FILE . . .	Number	 00000200h   
+FILE_ATTRIBUTE_SYSTEM  . . . . .	Number	 00000004h   
+FILE_ATTRIBUTE_TEMPORARY . . . .	Number	 00000100h   
+FILE_BEGIN . . . . . . . . . . .	Number	 00000000h   
+FILE_CURRENT . . . . . . . . . .	Number	 00000001h   
+FILE_DELETE_CHILD  . . . . . . .	Number	 00000040h   
+FILE_END . . . . . . . . . . . .	Number	 00000002h   
+FILE_READ_DATA . . . . . . . . .	Number	 00000001h   
+FILE_SHARE_DELETE  . . . . . . .	Number	 00000004h   
+FILE_SHARE_READ  . . . . . . . .	Number	 00000001h   
+FILE_SHARE_WRITE . . . . . . . .	Number	 00000002h   
+FILE_WRITE_DATA  . . . . . . . .	Number	 00000002h   
+FOCUS_EVENT  . . . . . . . . . .	Number	 00000010h   
+GENERIC_ALL  . . . . . . . . . .	Number	 10000000h   
+GENERIC_EXECUTE  . . . . . . . .	Number	 20000000h   
+GENERIC_READ . . . . . . . . . .	Number	 -80000000h   
+GENERIC_WRITE  . . . . . . . . .	Number	 40000000h   
+HEADmOVMENT  . . . . . . . . . .	DWord	 0000114A _DATA	
+HEADsTART  . . . . . . . . . . .	DWord	 00001146 _DATA	
+INVALID_HANDLE_VALUE . . . . . .	Number	 -00000001h   
+KEY_EVENT  . . . . . . . . . . .	Number	 00000001h   
+MENU_EVENT . . . . . . . . . . .	Number	 00000008h   
+MESSAGE  . . . . . . . . . . . .	Byte	 00000000 _DATA	
+MOUSE_EVENT  . . . . . . . . . .	Number	 00000002h   
+NULL . . . . . . . . . . . . . .	Number	 00000000h   
+OPEN_ALWAYS  . . . . . . . . . .	Number	 00000004h   
+OPEN_EXISTING  . . . . . . . . .	Number	 00000003h   
+PeekConsoleInput . . . . . . . .	Text   	 PeekConsoleInputA
+RESULT_F . . . . . . . . . . . .	Byte	 000000D3 _DATA	
+RESULT_L . . . . . . . . . . . .	Byte	 00000133 _DATA	
+RESULT_S . . . . . . . . . . . .	Byte	 00000103 _DATA	
+ReadConsoleInput . . . . . . . .	Text   	 ReadConsoleInputA
+ReadConsole  . . . . . . . . . .	Text   	 ReadConsoleA
+STD_INPUT_HANDLE . . . . . . . .	Number	 -0000000Ah   
+STD_OUTPUT_HANDLE  . . . . . . .	Number	 -0000000Bh   
+SetConsoleTitle  . . . . . . . .	Text   	 SetConsoleTitleA
+TRUE . . . . . . . . . . . . . .	Number	 00000001h   
+TRUNCATE_EXISTING  . . . . . . .	Number	 00000005h   
+WINDOW_BUFFER_SIZE_EVENT . . . .	Number	 00000004h   
+WriteConsoleOutputCharacter  . .	Text   	 WriteConsoleOutputCharacterA
+WriteConsole . . . . . . . . . .	Text   	 WriteConsoleA
+black  . . . . . . . . . . . . .	Number	 00000000h   
+blue . . . . . . . . . . . . . .	Number	 00000001h   
+brown  . . . . . . . . . . . . .	Number	 00000006h   
+cyan . . . . . . . . . . . . . .	Number	 00000003h   
+exit . . . . . . . . . . . . . .	Text   	 INVOKE ExitProcess,0
+gray . . . . . . . . . . . . . .	Number	 00000008h   
+green  . . . . . . . . . . . . .	Number	 00000002h   
+lightBlue  . . . . . . . . . . .	Number	 00000009h   
+lightCyan  . . . . . . . . . . .	Number	 0000000Bh   
+lightGray  . . . . . . . . . . .	Number	 00000007h   
+lightGreen . . . . . . . . . . .	Number	 0000000Ah   
+lightMagenta . . . . . . . . . .	Number	 0000000Dh   
+lightRed . . . . . . . . . . . .	Number	 0000000Ch   
+magenta  . . . . . . . . . . . .	Number	 00000005h   
+red  . . . . . . . . . . . . . .	Number	 00000004h   
+white  . . . . . . . . . . . . .	Number	 0000000Fh   
+yellow . . . . . . . . . . . . .	Number	 0000000Eh   
+
+	   0 Warnings
+	   0 Errors
